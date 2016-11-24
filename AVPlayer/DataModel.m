@@ -13,6 +13,8 @@
 - (instancetype)initWithDict:(NSDictionary *)dict {
     if (self = [super init]) {
         _mp4_url = dict[@"mp4_url"];
+        _title = dict[@"title"];
+        _cover = dict[@"cover"];
     }
     return self;
 }

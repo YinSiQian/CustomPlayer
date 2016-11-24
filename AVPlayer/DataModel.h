@@ -11,6 +11,8 @@
 @interface DataModel : NSObject
 
 @property (nonatomic, copy) NSString *mp4_url;
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSString *cover;
 
 
 - (instancetype)initWithDict:(NSDictionary *)dict;

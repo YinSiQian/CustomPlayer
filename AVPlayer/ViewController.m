@@ -54,8 +54,10 @@
 - (void)createPlayer {
     SQPlayer *player = [[SQPlayer alloc]initWithFrame:CGRectMake(10, 100, 300, 300)];
     player.delegate = self;
+    DataModel *model = self.dataArr.firstObject;
+    player.title = model.title;
+    player.urlString = model.mp4_url;
     [self.view addSubview:player];
-    player.urlString = [self.dataArr.firstObject mp4_url];
     [player play];
     
 }
