@@ -11,8 +11,9 @@
 #import "NetworkManager.h"
 #import "DataModel.h"
 
-@interface ViewController ()
+@interface ViewController ()<SQPlayerDelegate>
 @property (nonatomic, strong) NSMutableArray *dataArr;
+@property (nonatomic, assign) BOOL isRotateScreen;
 @end
 
 @implementation ViewController
@@ -27,7 +28,12 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self loadData];
-    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onDeviceOrientationChange)
+                                                 name:UIDeviceOrientationDidChangeNotification
+                                               object:nil
+     ];
+
     
 }
 
@@ -47,10 +53,43 @@
 
 - (void)createPlayer {
     SQPlayer *player = [[SQPlayer alloc]initWithFrame:CGRectMake(10, 100, 300, 300)];
+    player.delegate = self;
     [self.view addSubview:player];
     player.urlString = [self.dataArr.firstObject mp4_url];
     [player play];
     
+}
+
+- (void)onDeviceOrientationChange {
+    UIDeviceOrientation orientation = [UIDevice currentDevice].orientation;
+    UIInterfaceOrientation interfaceOrientation = (UIInterfaceOrientation)orientation;
+    [self setNeedsStatusBarAppearanceUpdate];
+
+}
+
+- (BOOL)shouldAutorotate {
+    return NO;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    if (!self.isRotateScreen) {
+        return UIInterfaceOrientationMaskPortrait;
+    }
+    return UIInterfaceOrientationMaskLandscape;
+}
+
+- (void)sq_PlayerStatusFailed:(SQPlayer *)player {
+    
+}
+
+- (void)sq_PlayerRotateScreen:(SQPlayer *)player fullScreen:(BOOL)isFullScreen {
+    self.isRotateScreen = isFullScreen;
+    if (isFullScreen) {
+        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationMaskLandscapeLeft animated:YES];
+    } else {
+        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:YES];
+
+    }
 }
 
 
