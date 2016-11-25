@@ -46,6 +46,10 @@
 
 @property (nonatomic, assign) BOOL isFirstHidden;
 
+@property (nonatomic, assign) BOOL isDraging;
+
+@property (nonatomic, assign) BOOL isFinished;
+
 @property (nonatomic, strong) UILabel *titleLable;
 
 @property (nonatomic, strong) NSTimer *timer;
@@ -98,9 +102,6 @@
     self.placeHolderView = [UIImageView new];
     [self addSubview:self.placeHolderView];
     
-    self.loadingView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
-    [self addSubview:self.loadingView];
-    
     self.contentView = [UIView new];
     self.contentView.backgroundColor = [UIColor clearColor];
     [self addSubview:self.contentView];
@@ -143,6 +144,7 @@
     self.videoProgress.maximumTrackTintColor = [UIColor clearColor];
     self.videoProgress.value = 0;
     [self.videoProgress addTarget:self action:@selector(dragSlider:) forControlEvents:UIControlEventValueChanged];
+    [self.videoProgress addTarget:self action:@selector(updateVideoProgress:) forControlEvents:UIControlEventTouchUpInside];
     [self.contentView addSubview:self.videoProgress];
     
     self.bufferProgress = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
@@ -156,9 +158,12 @@
     
     self.contentView.hidden = YES;
     
-    [self makeConstraints];
+    self.loadingView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
+    [self addSubview:self.loadingView];
     
     [self.loadingView startAnimating];
+    
+    [self makeConstraints];
     
     [self addGestureRecognizer];
 }
@@ -171,8 +176,6 @@
     UITapGestureRecognizer *showContentTag = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(showOpreationColumn)];
     showContentTag.numberOfTapsRequired = 1;
     [self addGestureRecognizer:showContentTag];
-    
-
 }
 
 - (void)makeConstraints {
@@ -250,19 +253,27 @@
     [self showOpreationColumn];
     [self.player pause];
     self.playBtn.selected = NO;
+    self.isFinished = YES;
     //初始化播放进度
     [self.player seekToTime:CMTimeMakeWithSeconds(0, self.playerItem.currentTime.timescale)];
     self.videoProgress.value = 0;
     if ([self.delegate respondsToSelector:@selector(sq_PlayerFinished:)]) {
         [self.delegate sq_PlayerFinished:self];
     }
-    NSLog(@"%s",__func__);
 }
 
 
 - (void)dragSlider:(UISlider *)slider {
-    NSLog(@"%s",__func__);
+    [self showOpreationColumn];
+    _isDraging = YES;
+    CGFloat nowTime = self.totalTime * slider.value;
+    [self.player seekToTime:CMTimeMakeWithSeconds(nowTime, self.playerItem.currentTime.timescale)];
+}
 
+//slider拖拽完成后回调
+- (void)updateVideoProgress:(UISlider *)slider {
+    _isDraging = NO;
+    [self hiddenOperationColumn];
 }
 
 - (void)showOpreationColumn {
@@ -293,6 +304,9 @@
     if (self.isFullScreen) {
         self.isFullScreen = NO;
         self.fullScreenBtn.hidden = NO;
+        if ([self.delegate respondsToSelector:@selector(sq_PlayerRotateScreen:fullScreen:)]) {
+            [self.delegate sq_PlayerRotateScreen:self fullScreen:_isFullScreen];
+        }
         [self handleRotateScreen:self.isFullScreen];
         [self remakeConstraints];
     } else {
@@ -329,17 +343,23 @@
             [self play];
         }
     } else if ([keyPath isEqualToString:@"loadedTimeRanges"]) {
+        CMTime ctime = self.player.currentTime;
+        NSLog(@"%lld     %d",ctime.value,ctime.timescale);
         CGFloat totalTime = CMTimeGetSeconds(_playerItem.duration);
         CGFloat totalBuffer = [self countBufferRange];
         self.bufferProgress.progressTintColor = [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.7];
         [self.bufferProgress setProgress:totalBuffer / totalTime animated:YES];
     } else if ([keyPath isEqualToString:@"playbackBufferEmpty"]) {
-        NSLog(@"playbackBufferEmpty");
+        NSLog(@"playbackBufferEmpty: %@ ",self.playerItem.loadedTimeRanges);
+        [self.loadingView startAnimating];
     }else if ([keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
+        //缓存可以播放的时候会回调
+        [self.loadingView stopAnimating];
+        [self.player play];
         NSLog(@"playbackLikelyToKeepUp");
     } else if ([keyPath isEqualToString:@"alpha"]) {
         CGFloat alpha = [change[@"new"] floatValue];
-        if (alpha == 1.0) {
+        if (alpha == 1.0 && !_isFinished && !_isDraging) {
             [self hiddenOperationColumn];
         }
     }
@@ -348,10 +368,9 @@
 #pragma mark --private func
 
 - (void)firstHiddenOperationColumn {
-    if (self.isFirstHidden) {
-        self.isFirstHidden = NO;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self hiddenOperationColumn];
-     }
+    });
 }
 
 - (void)hiddenOperationColumn {
@@ -525,6 +544,7 @@
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter]removeObserver:self];
+    [self.contentView removeObserver:self forKeyPath:@"alpha"];
     [self.playerItem removeObserver:self forKeyPath:@"status"];
     [self.playerItem removeObserver:self forKeyPath:@"loadedTimeRanges"];
     [self.playerItem removeObserver:self forKeyPath:@"playbackBufferEmpty"];

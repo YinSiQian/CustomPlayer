@@ -31,8 +31,7 @@
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(onDeviceOrientationChange)
                                                  name:UIDeviceOrientationDidChangeNotification
-                                               object:nil
-     ];
+                                               object:nil];
 
     
 }
@@ -63,10 +62,7 @@
 }
 
 - (void)onDeviceOrientationChange {
-    UIDeviceOrientation orientation = [UIDevice currentDevice].orientation;
-    UIInterfaceOrientation interfaceOrientation = (UIInterfaceOrientation)orientation;
     [self setNeedsStatusBarAppearanceUpdate];
-
 }
 
 - (BOOL)shouldAutorotate {
@@ -74,10 +70,7 @@
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    if (!self.isRotateScreen) {
-        return UIInterfaceOrientationMaskPortrait;
-    }
-    return UIInterfaceOrientationMaskLandscape;
+    return UIInterfaceOrientationMaskPortrait;
 }
 
 - (void)sq_PlayerStatusFailed:(SQPlayer *)player {
@@ -87,10 +80,9 @@
 - (void)sq_PlayerRotateScreen:(SQPlayer *)player fullScreen:(BOOL)isFullScreen {
     self.isRotateScreen = isFullScreen;
     if (isFullScreen) {
-        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationMaskLandscapeLeft animated:YES];
+        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationLandscapeRight animated:NO];
     } else {
-        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:YES];
-
+        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:NO];
     }
 }
 
